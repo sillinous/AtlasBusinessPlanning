@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # ATLAS Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://atlas:atlas_password@postgres:5432/atlas
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas_password
+      POSTGRES_DB: atlas
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: atlas_minio
+      MINIO_ROOT_PASSWORD: atlas_minio_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
